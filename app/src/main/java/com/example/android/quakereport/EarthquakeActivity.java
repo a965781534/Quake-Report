@@ -17,6 +17,7 @@ package com.example.android.quakereport;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
@@ -29,26 +30,56 @@ public class EarthquakeActivity extends AppCompatActivity {
 
     public static final String LOG_TAG = EarthquakeActivity.class.getName();
 
+    /** URL for earthquake data from the USGS dataset */
+    private static final String USGS_REQUEST_URL =
+            "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventtype=earthquake&orderby=time&minmag=6&limit=10";
+
+    private EarthQuakesAdapter mAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.earthquake_activity);
 
-        // Create a fake list of earthquake locations.
-        ArrayList<EarthQuakes> earthquakes = QueryUtils.extractEarthquakes();
-
-        final EarthQuakesAdapter adapter = new EarthQuakesAdapter(this, earthquakes);
         ListView earthquakeListView = (ListView) findViewById(R.id.list);
-        earthquakeListView.setAdapter(adapter);
+        mAdapter = new EarthQuakesAdapter(getBaseContext(), new ArrayList<EarthQuakes>());
+        earthquakeListView.setAdapter(mAdapter);
 
         earthquakeListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                EarthQuakes currentQuakes = adapter.getItem(position);
+                EarthQuakes currentQuakes = mAdapter.getItem(position);
                 Uri earthQuakeUri = Uri.parse(currentQuakes.getUrl());
                 Intent intent = new Intent(Intent.ACTION_VIEW, earthQuakeUri);
                 startActivity(intent);
             }
         });
+
+        EarthQuakeTask earthQuakeTask = new EarthQuakeTask();
+        earthQuakeTask.execute(USGS_REQUEST_URL);
+
     }
+
+    private class EarthQuakeTask extends AsyncTask<String, Void, ArrayList<EarthQuakes>>{
+
+        @Override
+        protected ArrayList<EarthQuakes> doInBackground(String... urls) {
+            if (urls.length < 1 || urls[0] == null){
+                return null;
+            }
+            // Perform the HTTP request for earthquake data and process the response.
+            ArrayList<EarthQuakes> result = (ArrayList<EarthQuakes>) QueryUtils.fetchEarthquakeData(urls[0]);
+            return result;
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<EarthQuakes> data) {
+            mAdapter.clear();
+            if (data != null && !data.isEmpty()){
+                mAdapter.addAll(data);
+            }
+        }
+
+    }
+
 }
