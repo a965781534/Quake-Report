@@ -1,4 +1,5 @@
-Quake Report App
+Quake Report App 地震报告
+网络应用
 ===================================
 
 This app displays a list of recent earthquakes in the world
